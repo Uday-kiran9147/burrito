@@ -54,3 +54,7 @@ Icon?
 
 # Xcode Indexing
 IndexStoreDB/
+
+# IDE Settings
+.vscode/
+
