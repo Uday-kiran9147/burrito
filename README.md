@@ -35,17 +35,19 @@ Then drag **Burrito.app** into your Applications folder.
 ### Windows
 
 1. Navigate to `Burrito.Windows/`
-2. Install dependencies:
+2. Install dependencies & download CLI binaries:
    ```bash
    cd Burrito.Windows
    npm install
+   npm run download-binaries
    ```
 3. Start the application:
    ```bash
    npm start
    ```
 
-> Bundled with 64-bit static Windows binaries for `cwebp.exe`, `pngquant.exe`, `oxipng.exe`, and `ffmpeg.exe`.
+> Automated script downloads 64-bit static Windows binaries for `cwebp.exe`, `pngquant.exe`, `oxipng.exe`, and `ffmpeg.exe` into `Burrito.Windows/bin/`.
+
 
 ---
 

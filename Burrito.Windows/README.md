@@ -9,6 +9,7 @@ A lightweight Windows system tray application for optimizing images and videos. 
 ```bash
 cd Burrito.Windows
 npm install
+npm run download-binaries
 npm start
 ```
 
@@ -23,7 +24,8 @@ npm start
   - **WEBP / WEBM**: Web Optimized strategy (`cwebp` for images, VP9 for videos).
 - **Quality Controls**: Sliders in Settings view for Image Quality and Video Quality (40–100).
 - **Auto-Start on Login**: Optional launch on system startup setting.
-- **Embedded 64-bit Binaries**: Bundled static Windows builds of `cwebp.exe`, `pngquant.exe`, `oxipng.exe`, and `ffmpeg.exe`.
+- **64-bit CLI Binaries**: Uses static Windows builds of `cwebp.exe`, `pngquant.exe`, `oxipng.exe`, and `ffmpeg.exe` (downloaded via `npm run download-binaries`).
+
 
 ---
 
