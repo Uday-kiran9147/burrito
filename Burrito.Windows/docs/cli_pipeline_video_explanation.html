@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Burrito CLI Media Compression Pipeline - Video Visual Explanation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-card: #111827;
+      --bg-card-hover: #1f293d;
+      --border-color: #1f293d;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --cyan: #06b6d4;
+      --cyan-glow: rgba(6, 182, 212, 0.35);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.35);
+      --purple: #a855f7;
+      --purple-glow: rgba(168, 85, 247, 0.35);
+      --amber: #f59e0b;
+      --pink: #ec4899;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'Fira Code', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    header {
+      width: 100%;
+      max-width: 1200px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 22px;
+      color: #fff;
+      box-shadow: 0 0 20px var(--cyan-glow);
+    }
+
+    .brand-text h1 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 20px;
+      color: var(--emerald);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--emerald);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--emerald);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.6; }
+    }
+
+    /* Video Player Container */
+    .video-container {
+      width: 100%;
+      max-width: 1200px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Video Stage Screen */
+    .video-stage {
+      position: relative;
+      width: 100%;
+      height: 580px;
+      background: #04070d;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Canvas Animation Layer */
+    #visualCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Overlay Info Screen & Captions */
+    .stage-overlay {
+      position: relative;
+      z-index: 2;
+      pointer-events: none;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 30px;
+    }
+
+    .scene-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .scene-title-tag {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 10px 18px;
+      border-radius: 12px;
+    }
+
+    .scene-number {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+      color: var(--cyan);
+      margin-bottom: 2px;
+    }
+
+    .scene-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .pipeline-status-pill {
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-color);
+      border-radius: 30px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--cyan);
+    }
+
+    /* Captions Bar */
+    .caption-box {
+      align-self: center;
+      max-width: 90%;
+      background: rgba(5, 8, 15, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 16px 28px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 500;
+      color: #f8fafc;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      transition: all 0.3s ease;
+    }
+
+    .caption-box span.highlight {
+      color: var(--cyan);
+      font-weight: 700;
+    }
+    .caption-box span.accent-emerald {
+      color: var(--emerald);
+      font-weight: 700;
+    }
+    .caption-box span.accent-purple {
+      color: var(--purple);
+      font-weight: 700;
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+      background: #0d1322;
+      border-top: 1px solid var(--border-color);
+      padding: 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      z-index: 10;
+    }
+
+    .progress-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .time-display {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-muted);
+      min-width: 90px;
+    }
+
+    .progress-bar-container {
+      flex: 1;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--cyan), var(--emerald));
+      border-radius: 4px;
+      transition: width 0.1s linear;
+      position: relative;
+    }
+
+    .chapter-markers {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      pointer-events: none;
+    }
+
+    .chapter-mark {
+      height: 100%;
+      border-right: 2px solid rgba(0, 0, 0, 0.5);
+      position: absolute;
+    }
+
+    .controls-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-ctrl {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-ctrl:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      transform: translateY(-1px);
+    }
+
+    .btn-play {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--cyan), #0284c7);
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      box-shadow: 0 4px 15px var(--cyan-glow);
+    }
+
+    .btn-play:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px var(--cyan-glow);
+      color: #fff;
+    }
+
+    .scene-selector {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .scene-pill {
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .scene-pill:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .scene-pill.active {
+      background: rgba(6, 182, 212, 0.15);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .audio-toggle-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .audio-toggle-btn.active {
+      border-color: var(--emerald);
+      color: var(--emerald);
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    /* Explanation Cards Grid */
+    .info-grid {
+      width: 100%;
+      max-width: 1200px;
+      margin-top: 30px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .icon-webp { background: rgba(6, 182, 212, 0.15); color: var(--cyan); }
+    .icon-png { background: rgba(16, 185, 129, 0.15); color: var(--emerald); }
+    .icon-ffmpeg { background: rgba(168, 85, 247, 0.15); color: var(--purple); }
+    .icon-math { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+
+    .code-block {
+      background: #070a12;
+      border: 1px solid #1a2336;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: #38bdf8;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .flag-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .flag-list strong {
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Interactive Simulator Section */
+    .simulator-card {
+      grid-column: 1 / -1;
+      background: linear-gradient(180deg, #111827 0%, #0d1322 100%);
+      border: 1px solid #1f293d;
+    }
+
+    .sim-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    .sim-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .sim-group label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .sim-select, .sim-slider {
+      background: #1a2336;
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: var(--font-sans);
+      outline: none;
+    }
+
+    .btn-run-sim {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, var(--emerald), #059669);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px var(--emerald-glow);
+    }
+
+    .btn-run-sim:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--emerald-glow);
+    }
+
+    .terminal-window {
+      background: #04060a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 18px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      height: 180px;
+      overflow-y: auto;
+      color: #10b981;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .term-line {
+      display: flex;
+      gap: 8px;
+    }
+
+    .term-prompt { color: #06b6d4; }
+    .term-cmd { color: #f3f4f6; }
+    .term-out { color: #94a3b8; }
+    .term-success { color: #10b981; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-logo">B</div>
+      <div class="brand-text">
+        <h1>Burrito CLI Pipeline Visualizer</h1>
+        <p>Interactive Video & Visual Architecture Breakdown</p>
+      </div>
+    </div>
+    <div class="badge-live">
+      <div class="pulse-dot"></div>
+      Burrito v1.0 Engine
+    </div>
+  </header>
+
+  <!-- Main Interactive Video Presentation Player -->
+  <div class="video-container">
+    <div class="video-stage">
+      <canvas id="visualCanvas"></canvas>
+      
+      <div class="stage-overlay">
+        <div class="scene-header">
+          <div class="scene-title-tag">
+            <div class="scene-number" id="sceneNumLabel">Scene 1 of 6</div>
+            <div class="scene-name" id="sceneTitleLabel">Pipeline Overview & Binary Engines</div>
+          </div>
+          <div class="pipeline-status-pill">
+            <span id="activeBinaryLabel">SYS :: INITIALIZED</span>
+          </div>
+        </div>
+
+        <div class="caption-box" id="captionText">
+          Welcome to <span class="highlight">Burrito's CLI Media Compression Pipeline</span>. Discover how 4 open-source binaries compress images and video at maximum ratio!
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Controls Bar -->
+    <div class="controls-bar">
+      <div class="progress-wrapper">
+        <span class="time-display" id="timeDisplay">00:00 / 01:30</span>
+        <div class="progress-bar-container" id="progressBarTrack">
+          <div class="progress-bar-fill" id="progressBarFill"></div>
+          <div class="chapter-markers">
+            <div class="chapter-mark" style="left: 0%;"></div>
+            <div class="chapter-mark" style="left: 16.6%;"></div>
+            <div class="chapter-mark" style="left: 33.3%;"></div>
+            <div class="chapter-mark" style="left: 50%;"></div>
+            <div class="chapter-mark" style="left: 66.6%;"></div>
+            <div class="chapter-mark" style="left: 83.3%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <div class="btn-group">
+          <button class="btn-ctrl btn-play" id="playBtn" title="Play / Pause">▶</button>
+          <button class="btn-ctrl" id="prevBtn" title="Previous Scene">⏮</button>
+          <button class="btn-ctrl" id="nextBtn" title="Next Scene">⏭</button>
+          <button class="btn-ctrl" id="restartBtn" title="Restart Video">🔄</button>
+          <button class="audio-toggle-btn" id="voiceoverBtn">
+            🔊 Audio Narration: <span id="voiceStatus">OFF</span>
+          </button>
+        </div>
+
+        <!-- Scene Pills Navigation -->
+        <div class="scene-selector" id="scenePills">
+          <button class="scene-pill active" data-scene="0">1. Overview</button>
+          <button class="scene-pill" data-scene="1">2. WebP (`cwebp`)</button>
+          <button class="scene-pill" data-scene="2">3. PNG Dual-Stage</button>
+          <button class="scene-pill" data-scene="3">4. Video & CRF Math</button>
+          <button class="scene-pill" data-scene="4">5. Web Faststart</button>
+          <button class="scene-pill" data-scene="5">6. Terminal Sim</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Technical Reference Cards -->
+  <div class="info-grid">
+
+    <!-- Card 1: WebP -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon icon-webp">⚡</div>
+          1. WebP Encoder (`cwebp.exe`)
+        </div>
+      </div>
+      <p style="font-size:13px; color: var(--text-muted);">
+        Converts raster images to next-gen WebP format using Google's official WebP encoder in multi-threaded effort mode.
+      </p>
+      <div class="code-block">cwebp.exe -q <quality> -m 6 -mt <input> -o <output></div>
+      <ul class="flag-list">
+        <li><strong>-q &lt;quality&gt;</strong> Target image quality factor (40 to 100, default 80).</li>
+        <li><strong>-m 6</strong> Maximum encoding effort level for optimal block search compression.</li>
+        <li><strong>-mt</strong> Enables multi-threaded encoding for blazing CPU speed.</li>
+      </ul>
+    </div>
+
+    <!-- Card 2: PNG Dual-Stage -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon icon-png">🎨</div>
+          2. Dual-Stage PNG Optimization
+        </div>
+      </div>
+      <p style="font-size:13px; color: var(--text-muted);">
+        A powerful 2-step pipeline: Stage 1 lossy quantization followed by Stage 2 lossless IDAT chunk optimization.
+      </p>
+      <div class="code-block">Stage 1: pngquant.exe --quality=<min>-<max> --speed 1 --strip --force
+Stage 2: oxipng.exe -o 4 --strip safe <output></div>
+      <ul class="flag-list">
+        <li><strong>pngMax = quality</strong> | <strong>pngMin = max(0, quality - 15)</strong></li>
+        <li><strong>--speed 1</strong> Highest color palette quantization precision.</li>
+        <li><strong>oxipng -o 4</strong> Level 4 lossless optimization effort with safe metadata removal.</li>
+      </ul>
+    </div>
+
+    <!-- Card 3: Video FFmpeg & Math -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon icon-ffmpeg">🎬</div>
+          3. FFmpeg Video Transcoder & CRF Formula
+        </div>
+      </div>
+      <p style="font-size:13px; color: var(--text-muted);">
+        Transcodes video into H.264 MP4 or VP9 WebM. Converts user 40-100 quality percentage into constant rate factor (CRF).
+      </p>
+      <div class="code-block" style="color: var(--amber);">CRF = Math.round( 32 - ((videoQuality - 40) / 60.0) * 14 )</div>
+      <ul class="flag-list">
+        <li><strong>Quality 100</strong> &rarr; CRF 18 (visually lossless).</li>
+        <li><strong>Quality 40</strong> &rarr; CRF 32 (maximum compression).</li>
+        <li><strong>-movflags +faststart</strong> Moves MOOV atom to header for instant web playback.</li>
+      </ul>
+    </div>
+
+    <!-- Interactive Simulator Section -->
+    <div class="card simulator-card">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon icon-math">💻</div>
+          Live CLI Pipeline Test Simulator
+        </div>
+      </div>
+      <div class="sim-controls">
+        <div class="sim-group">
+          <label>Select Input Media</label>
+          <select id="simFileType" class="sim-select">
+            <option value="jpeg">Hero Photo (hero.jpg, 4.2 MB)</option>
+            <option value="png">App UI Asset (logo.png, 1.8 MB)</option>
+            <option value="video">Promo Video (promo.mov, 45.0 MB)</option>
+          </select>
+        </div>
+        <div class="sim-group">
+          <label>Target Quality (40 - 100): <span id="qualityValDisplay" style="color: var(--cyan);">80</span></label>
+          <input type="range" id="simQuality" min="40" max="100" value="80" class="sim-slider">
+        </div>
+        <div class="sim-group" style="flex:0;">
+          <label>&nbsp;</label>
+          <button id="runSimBtn" class="btn-run-sim">⚡ Run CLI Pipeline</button>
+        </div>
+      </div>
+
+      <div class="terminal-window" id="simTerminal">
+        <div class="term-line">
+          <span class="term-prompt">burrito@win-x64:~$</span>
+          <span class="term-out">CLI Pipeline Simulator ready. Adjust inputs above and run pipeline...</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Pipeline Scene Data & Captions
+    const scenes = [
+      {
+        id: 0,
+        title: "Pipeline Overview & Binary Engines",
+        binary: "4 OPEN-SOURCE BINARIES",
+        duration: 15,
+        caption: "Burrito relies on 4 industry-standard open-source CLI tools (<span class='highlight'>cwebp.exe</span>, <span class='accent-emerald'>pngquant.exe</span>, <span class='accent-emerald'>oxipng.exe</span>, and <span class='accent-purple'>ffmpeg.exe</span>) located in <span class='highlight'>bin/</span>.",
+        narration: "Burrito relies on 4 industry-standard open-source CLI tools: cwebp, pngquant, oxipng, and ffmpeg to perform high-ratio compression for images and video."
+      },
+      {
+        id: 1,
+        title: "WebP Compression Engine (cwebp.exe)",
+        binary: "bin/cwebp.exe",
+        duration: 15,
+        caption: "For <span class='highlight'>webOptimized</span> images, <span class='highlight'>cwebp.exe</span> executes with <span class='highlight'>-q quality</span>, <span class='highlight'>-m 6</span> (max compression effort), and multi-threading <span class='highlight'>-mt</span>.",
+        narration: "When optimizing images for WebP, cwebp executes with minus q quality, minus m 6 for maximum compression effort mode, and minus m t for multi-threaded encoding."
+      },
+      {
+        id: 2,
+        title: "Dual-Stage PNG Optimization Pipeline",
+        binary: "bin/pngquant.exe + oxipng.exe",
+        duration: 15,
+        caption: "PNG optimization uses a 2-stage strategy: Stage 1 quantizes colors with <span class='accent-emerald'>pngquant</span>. If bounds pass, Stage 2 applies lossless <span class='accent-emerald'>oxipng -o 4</span> IDAT re-compression.",
+        narration: "PNG optimization runs in two stages: Stage 1 uses pngquant to quantize color palettes within calculated min and max bounds. If successful, Stage 2 applies oxipng level 4 lossless optimization."
+      },
+      {
+        id: 3,
+        title: "FFmpeg Video Transcoding & CRF Formula",
+        binary: "bin/ffmpeg.exe",
+        duration: 15,
+        caption: "Video quality percentage (40 to 100) is dynamically mapped to CRF (32 to 18) using formula: <span class='highlight'>CRF = Math.round(32 - ((Q - 40)/60) * 14)</span>.",
+        narration: "For video transcoding, Burrito maps user video quality from 40 to 100 directly into a Constant Rate Factor from 32 to 18 using a dynamic mathematical formula."
+      },
+      {
+        id: 4,
+        title: "Web Streaming & VP9 Optimizations",
+        binary: "bin/ffmpeg.exe (Flags)",
+        duration: 15,
+        caption: "MP4 uses <span class='accent-purple'>-movflags +faststart</span> to move the MOOV atom for instant web playback. WebM uses <span class='accent-purple'>-vcodec libvpx-vp9 -b:v 0</span>.",
+        narration: "For web MP4 streaming, FFmpeg uses minus movflags plus faststart to relocate the MOOV atom to the header. For WebM, VP9 is encoded with minus b v 0."
+      },
+      {
+        id: 5,
+        title: "Interactive CLI Pipeline Simulator",
+        binary: "EXECUTION ENGINE",
+        duration: 15,
+        caption: "Try the live CLI simulation below to experience real-time tool execution, command flag generation, and byte savings!",
+        narration: "You can now test the interactive CLI pipeline simulator below to experience real-time execution and byte savings."
+      }
+    ];
+
+    // State Variables
+    let currentSceneIdx = 0;
+    let isPlaying = false;
+    let currentTime = 0;
+    const totalDuration = scenes.reduce((acc, s) => acc + s.duration, 0);
+    let voiceoverEnabled = false;
+    let animFrameReq = null;
+
+    // DOM Elements
+    const canvas = document.getElementById('visualCanvas');
+    const ctx = canvas.getContext('2d');
+    const playBtn = document.getElementById('playBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const voiceoverBtn = document.getElementById('voiceoverBtn');
+    const voiceStatus = document.getElementById('voiceStatus');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const progressBarTrack = document.getElementById('progressBarTrack');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const sceneNumLabel = document.getElementById('sceneNumLabel');
+    const sceneTitleLabel = document.getElementById('sceneTitleLabel');
+    const activeBinaryLabel = document.getElementById('activeBinaryLabel');
+    const captionText = document.getElementById('captionText');
+    const scenePills = document.querySelectorAll('.scene-pill');
+
+    // Resize Canvas dynamically
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Web Speech API Voiceover Narrator
+    function speakNarration(text) {
+      if (!voiceoverEnabled || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel(); // Stop ongoing speech
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // Canvas Rendering Engine for Video Scenes
+    let animTime = 0;
+    function renderCanvasScene(sceneIdx, sceneProgress) {
+      const w = canvas.width;
+      const h = canvas.height;
+      animTime += 0.03;
+
+      // Background gradient
+      const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+      bgGrad.addColorStop(0, '#04070d');
+      bgGrad.addColorStop(1, '#091122');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Grid network lines background
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.6)';
+      ctx.lineWidth = 1;
+      const gridSize = 40;
+      for (let x = 0; x < w; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Render Scene specific visual graphics
+      switch(sceneIdx) {
+        case 0:
+          drawScene0_Overview(w, h, sceneProgress);
+          break;
+        case 1:
+          drawScene1_WebP(w, h, sceneProgress);
+          break;
+        case 2:
+          drawScene2_PNG(w, h, sceneProgress);
+          break;
+        case 3:
+          drawScene3_VideoMath(w, h, sceneProgress);
+          break;
+        case 4:
+          drawScene4_Faststart(w, h, sceneProgress);
+          break;
+        case 5:
+          drawScene5_Simulator(w, h, sceneProgress);
+          break;
+      }
+    }
+
+    // Scene 1 Visual: Overview Architecture
+    function drawScene0_Overview(w, h, p) {
+      const tools = [
+        { name: "cwebp.exe", role: "WebP Encoder", color: "#06b6d4" },
+        { name: "pngquant.exe", role: "Lossy PNG", color: "#10b981" },
+        { name: "oxipng.exe", role: "Lossless PNG", color: "#34d399" },
+        { name: "ffmpeg.exe", role: "Video Transcoder", color: "#a855f7" }
+      ];
+
+      // Draw input file node
+      const inputX = 120;
+      const inputY = h / 2;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(inputX - 60, inputY - 70, 120, 140, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 16px var(--font-sans)';
+      ctx.textAlign = 'center';
+      ctx.fillText('Input Files', inputX, inputY - 30);
+      ctx.font = '12px var(--font-mono)';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('.JPG / .PNG', inputX, inputY);
+      ctx.fillText('.MP4 / .MOV', inputX, inputY + 20);
+
+      // Draw 4 Binary Engine Nodes
+      const startX = 340;
+      const spacing = 180;
+      tools.forEach((t, i) => {
+        const x = startX + i * spacing;
+        const y = h / 2;
+
+        // Animated connection line
+        ctx.strokeStyle = t.color;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 8]);
+        ctx.lineDashOffset = -animTime * 20;
+        ctx.beginPath();
+        if (i === 0) ctx.moveTo(inputX + 60, inputY);
+        else ctx.moveTo(startX + (i - 1) * spacing + 60, y);
+        ctx.lineTo(x - 60, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Node card
+        ctx.fillStyle = 'rgba(17, 24, 39, 0.9)';
+        ctx.strokeStyle = t.color;
+        ctx.lineWidth = p > (i * 0.25) ? 3 : 1;
+        ctx.beginPath();
+        ctx.roundRect(x - 60, y - 60, 120, 120, 16);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = t.color;
+        ctx.font = 'bold 14px var(--font-mono)';
+        ctx.fillText(t.name, x, y - 15);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '11px var(--font-sans)';
+        ctx.fillText(t.role, x, y + 15);
+      });
+
+      // Output Folder Node
+      const outX = startX + 3 * spacing + 180;
+      ctx.strokeStyle = '#10b981';
+      ctx.beginPath();
+      ctx.setLineDash([8, 8]);
+      ctx.moveTo(startX + 3 * spacing + 60, h/2);
+      ctx.lineTo(outX - 60, h/2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.1)';
+      ctx.strokeStyle = '#10b981';
+      ctx.beginPath();
+      ctx.roundRect(outX - 60, h/2 - 70, 120, 140, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 14px var(--font-sans)';
+      ctx.fillText('Optimized Files/', outX, h/2 - 20);
+      ctx.font = '12px var(--font-mono)';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('Up to -80%', outX, h/2 + 20);
+    }
+
+    // Scene 1 Visual: WebP Engine
+    function drawScene1_WebP(w, h, p) {
+      const centerX = w / 2;
+      const centerY = h / 2;
+
+      // cwebp center icon
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.1)';
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 90, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#06b6d4';
+      ctx.font = 'bold 24px var(--font-mono)';
+      ctx.textAlign = 'center';
+      ctx.fillText('cwebp.exe', centerX, centerY - 10);
+      ctx.font = '13px var(--font-mono)';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('webOptimized', centerX, centerY + 15);
+
+      // Orbiting Flag Pills
+      const flags = [
+        { text: "-q <imageQuality>", desc: "Quality: 40-100 (Default 80)" },
+        { text: "-m 6", desc: "Max Compression Effort Mode" },
+        { text: "-mt", desc: "Multi-Threaded CPU Engine" }
+      ];
+
+      flags.forEach((f, i) => {
+        const angle = animTime * 0.8 + (i * (Math.PI * 2 / 3));
+        const fx = centerX + Math.cos(angle) * 220;
+        const fy = centerY + Math.sin(angle) * 160;
+
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(fx, fy);
+        ctx.stroke();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(fx - 100, fy - 25, 200, 50, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 13px var(--font-mono)';
+        ctx.fillText(f.text, fx, fy - 4);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px var(--font-sans)';
+        ctx.fillText(f.desc, fx, fy + 14);
+      });
+    }
+
+    // Scene 2 Visual: Dual Stage PNG
+    function drawScene2_PNG(w, h, p) {
+      // Stage 1 Box
+      const s1X = w * 0.3;
+      const s2X = w * 0.7;
+      const y = h / 2;
+
+      // Stage 1: pngquant
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.1)';
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(s1X - 130, y - 100, 260, 200, 16);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 18px var(--font-mono)';
+      ctx.textAlign = 'center';
+      ctx.fillText('STAGE 1: pngquant.exe', s1X, y - 60);
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '12px var(--font-mono)';
+      ctx.fillText('--quality=<min>-<max>', s1X, y - 20);
+      ctx.fillText('pngMax = quality', s1X, y + 5);
+      ctx.fillText('pngMin = max(0, quality - 15)', s1X, y + 30);
+      ctx.fillText('--speed 1 --strip', s1X, y + 60);
+
+      // Arrow transition
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([6, 6]);
+      ctx.lineDashOffset = -animTime * 15;
+      ctx.beginPath();
+      ctx.moveTo(s1X + 130, y);
+      ctx.lineTo(s2X - 130, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Stage 2: oxipng
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.1)';
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(s2X - 130, y - 100, 260, 200, 16);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 18px var(--font-mono)';
+      ctx.fillText('STAGE 2: oxipng.exe', s2X, y - 60);
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '12px var(--font-mono)';
+      ctx.fillText('-o 4 --strip safe', s2X, y - 20);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '12px var(--font-sans)';
+      ctx.fillText('Lossless IDAT chunk optimization', s2X, y + 20);
+      ctx.fillText('Safe metadata removal', s2X, y + 50);
+    }
+
+    // Scene 3 Visual: Video Transcoding & Math Formula
+    function drawScene3_VideoMath(w, h, p) {
+      const centerX = w / 2;
+      const y = h / 2;
+
+      // Formula Box Display
+      ctx.fillStyle = 'rgba(17, 24, 39, 0.95)';
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(centerX - 320, y - 140, 640, 110, 16);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = 'bold 14px var(--font-mono)';
+      ctx.textAlign = 'center';
+      ctx.fillText('DYNAMIC CRF MATHEMATICAL FORMULA', centerX, y - 110);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px var(--font-mono)';
+      ctx.fillText('CRF = Math.round( 32 - ((videoQuality - 40) / 60.0) * 14 )', centerX, y - 65);
+
+      // Graph mapping Quality vs CRF
+      const qVal = 40 + Math.floor((p * 60));
+      const crfVal = Math.round(32 - ((qVal - 40) / 60.0) * 14);
+
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.1)';
+      ctx.strokeStyle = '#a855f7';
+      ctx.beginPath();
+      ctx.roundRect(centerX - 240, y + 0, 480, 110, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#a855f7';
+      ctx.font = 'bold 16px var(--font-sans)';
+      ctx.fillText(`Live Dynamic Calculation (Progress ${Math.round(p*100)}%)`, centerX, y + 25);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 20px var(--font-mono)';
+      ctx.fillText(`Video Quality Input: ${qVal}%`, centerX - 120, y + 70);
+
+      ctx.fillStyle = '#10b981';
+      ctx.fillText(`Output CRF: ${crfVal}`, centerX + 120, y + 70);
+    }
+
+    // Scene 4 Visual: Faststart & WebM
+    function drawScene4_Faststart(w, h, p) {
+      const centerX = w / 2;
+      
+      // MP4 Faststart demo
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.1)';
+      ctx.strokeStyle = '#a855f7';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(50, 100, w/2 - 70, 360, 16);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#a855f7';
+      ctx.font = 'bold 18px var(--font-mono)';
+      ctx.textAlign = 'center';
+      ctx.fillText('MP4 H.264 (-movflags +faststart)', w/4 + 15, 140);
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '13px var(--font-sans)';
+      ctx.fillText('Moves MOOV Atom (index) from end to start', w/4 + 15, 180);
+      ctx.fillText('Enables instant web streaming before download completes!', w/4 + 15, 210);
+
+      // Draw diagram of MOOV atom relocation
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(80, 260, w/2 - 130, 40);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(80, 260, 80, 40);
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 12px var(--font-mono)';
+      ctx.fillText('MOOV', 120, 285);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText('MDAT (Video & Audio Data Stream)', w/4 + 50, 285);
+
+      // WebM VP9 demo
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.1)';
+      ctx.strokeStyle = '#06b6d4';
+      ctx.beginPath();
+      ctx.roundRect(w/2 + 20, 100, w/2 - 70, 360, 16);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#06b6d4';
+      ctx.font = 'bold 18px var(--font-mono)';
+      ctx.fillText('WebM VP9 (-vcodec libvpx-vp9 -b:v 0)', w*0.75 - 15, 140);
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '13px var(--font-sans)';
+      ctx.fillText('-b:v 0 forces Constrained Quality Mode', w*0.75 - 15, 180);
+      ctx.fillText('CRF controls quality dynamically per frame', w*0.75 - 15, 210);
+    }
+
+    // Scene 5 Visual: Terminal Sim Preview
+    function drawScene5_Simulator(w, h, p) {
+      const centerX = w / 2;
+      const centerY = h / 2;
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 28px var(--font-sans)';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡ CLI Execution Complete!', centerX, centerY - 40);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '16px var(--font-sans)';
+      ctx.fillText('Test custom parameters using the Live Simulator below.', centerX, centerY + 10);
+    }
+
+    // Update Player Clock & Progress
+    function updateClock() {
+      let sceneTime = 0;
+      for (let i = 0; i < currentSceneIdx; i++) sceneTime += scenes[i].duration;
+
+      const progressTrackWidth = progressBarTrack.clientWidth;
+      const sceneProgress = (currentTime - sceneTime) / scenes[currentSceneIdx].duration;
+      const globalProgress = currentTime / totalDuration;
+
+      progressBarFill.style.width = `${globalProgress * 100}%`;
+
+      const m = Math.floor(currentTime / 60).toString().padStart(2, '0');
+      const s = Math.floor(currentTime % 60).toString().padStart(2, '0');
+      const tm = Math.floor(totalDuration / 60).toString().padStart(2, '0');
+      const ts = Math.floor(totalDuration % 60).toString().padStart(2, '0');
+      timeDisplay.innerText = `${m}:${s} / ${tm}:${ts}`;
+
+      renderCanvasScene(currentSceneIdx, Math.max(0, Math.min(1, sceneProgress)));
+    }
+
+    // Advance Video Frame
+    function tick() {
+      if (isPlaying) {
+        currentTime += 0.05;
+        if (currentTime >= totalDuration) {
+          currentTime = totalDuration;
+          isPlaying = false;
+          playBtn.innerText = '▶';
+        }
+
+        // Check if scene changed
+        let accumulated = 0;
+        for (let i = 0; i < scenes.length; i++) {
+          accumulated += scenes[i].duration;
+          if (currentTime <= accumulated || i === scenes.length - 1) {
+            if (currentSceneIdx !== i) {
+              switchScene(i, false);
+            }
+            break;
+          }
+        }
+      }
+      updateClock();
+      animFrameReq = requestAnimationFrame(tick);
+    }
+
+    // Switch Scene function
+    function switchScene(idx, resetTime = true) {
+      currentSceneIdx = idx;
+      if (resetTime) {
+        let t = 0;
+        for (let i = 0; i < idx; i++) t += scenes[i].duration;
+        currentTime = t;
+      }
+
+      const s = scenes[idx];
+      sceneNumLabel.innerText = `Scene ${s.id + 1} of ${scenes.length}`;
+      sceneTitleLabel.innerText = s.title;
+      activeBinaryLabel.innerText = `SYS :: ${s.binary}`;
+      captionText.innerHTML = s.caption;
+
+      // Update Pill highlight
+      scenePills.forEach((pill, i) => {
+        pill.classList.toggle('active', i === idx);
+      });
+
+      if (isPlaying && voiceoverEnabled) {
+        speakNarration(s.narration);
+      }
+    }
+
+    // Controls Event Listeners
+    playBtn.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      playBtn.innerText = isPlaying ? '⏸' : '▶';
+      if (isPlaying && voiceoverEnabled) {
+        speakNarration(scenes[currentSceneIdx].narration);
+      }
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (currentSceneIdx > 0) switchScene(currentSceneIdx - 1, true);
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentSceneIdx < scenes.length - 1) switchScene(currentSceneIdx + 1, true);
+    });
+
+    restartBtn.addEventListener('click', () => {
+      currentTime = 0;
+      switchScene(0, true);
+      if (isPlaying && voiceoverEnabled) speakNarration(scenes[0].narration);
+    });
+
+    voiceoverBtn.addEventListener('click', () => {
+      voiceoverEnabled = !voiceoverEnabled;
+      voiceStatus.innerText = voiceoverEnabled ? 'ON' : 'OFF';
+      voiceoverBtn.classList.toggle('active', voiceoverEnabled);
+      if (voiceoverEnabled && isPlaying) speakNarration(scenes[currentSceneIdx].narration);
+      else if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    });
+
+    progressBarTrack.addEventListener('click', (e) => {
+      const rect = progressBarTrack.getBoundingClientRect();
+      const pct = (e.clientX - rect.left) / rect.width;
+      currentTime = pct * totalDuration;
+      let acc = 0;
+      for (let i = 0; i < scenes.length; i++) {
+        acc += scenes[i].duration;
+        if (currentTime <= acc || i === scenes.length - 1) {
+          switchScene(i, false);
+          break;
+        }
+      }
+    });
+
+    scenePills.forEach((pill, i) => {
+      pill.addEventListener('click', () => switchScene(i, true));
+    });
+
+    // Start Animation Loop
+    animFrameReq = requestAnimationFrame(tick);
+
+    // Live Simulator Logic
+    const simFileType = document.getElementById('simFileType');
+    const simQuality = document.getElementById('simQuality');
+    const qualityValDisplay = document.getElementById('qualityValDisplay');
+    const runSimBtn = document.getElementById('runSimBtn');
+    const simTerminal = document.getElementById('simTerminal');
+
+    simQuality.addEventListener('input', () => {
+      qualityValDisplay.innerText = simQuality.value;
+    });
+
+    runSimBtn.addEventListener('click', () => {
+      const type = simFileType.value;
+      const q = parseInt(simQuality.value);
+
+      simTerminal.innerHTML = '';
+      appendTerm('burrito@win-x64:~$', `Initiating CLI pipeline for type [${type}] with quality=${q}...`, 'cmd');
+
+      setTimeout(() => {
+        if (type === 'jpeg') {
+          appendTerm('EXEC:', `cwebp.exe -q ${q} -m 6 -mt hero.jpg -o "Optimized Files/hero.webp"`, 'prompt');
+          setTimeout(() => {
+            appendTerm('SUCCESS:', `[cwebp] Encoded hero.webp | Input: 4.2 MB -> Output: ${(4.2 * (q/100) * 0.3).toFixed(2)} MB (-${Math.round((1 - (q/100)*0.3)*100)}%)`, 'success');
+          }, 400);
+        } else if (type === 'png') {
+          const pngMax = q;
+          const pngMin = Math.max(0, pngMax - 15);
+          appendTerm('STAGE 1:', `pngquant.exe --quality=${pngMin}-${pngMax} --speed 1 --strip --force logo.png --output "Optimized Files/logo.png"`, 'prompt');
+          setTimeout(() => {
+            appendTerm('STAGE 2:', `oxipng.exe -o 4 --strip safe "Optimized Files/logo.png"`, 'prompt');
+            setTimeout(() => {
+              appendTerm('SUCCESS:', `[pngquant+oxipng] Optimized logo.png | Input: 1.8 MB -> Output: ${(1.8 * (q/100) * 0.45).toFixed(2)} MB (-${Math.round((1 - (q/100)*0.45)*100)}%)`, 'success');
+            }, 400);
+          }, 400);
+        } else if (type === 'video') {
+          const crf = Math.round(32 - ((q - 40) / 60.0) * 14);
+          appendTerm('COMPUTE:', `Quality ${q}% -> CRF Formula = Math.round(32 - ((${q}-40)/60)*14) = ${crf}`, 'out');
+          appendTerm('STAGE 1 (MP4):', `ffmpeg.exe -i promo.mov -vcodec libx264 -crf ${crf} -pix_fmt yuv420p -movflags +faststart -y "Optimized Files/promo.mp4"`, 'prompt');
+          setTimeout(() => {
+            appendTerm('STAGE 2 (WebM):', `ffmpeg.exe -i promo.mov -vcodec libvpx-vp9 -crf ${crf} -b:v 0 -y "Optimized Files/promo.webm"`, 'prompt');
+            setTimeout(() => {
+              appendTerm('SUCCESS:', `[ffmpeg] Transcoded promo.mp4 & promo.webm (CRF ${crf}) | Input: 45.0 MB -> MP4: ${(45.0 * (q/100) * 0.35).toFixed(1)} MB | WebM: ${(45.0 * (q/100) * 0.28).toFixed(1)} MB`, 'success');
+            }, 500);
+          }, 400);
+        }
+      }, 200);
+    });
+
+    function appendTerm(prefix, text, styleClass) {
+      const line = document.createElement('div');
+      line.className = 'term-line';
+      line.innerHTML = `<span class="term-${styleClass}">${prefix}</span> <span class="term-out">${text}</span>`;
+      simTerminal.appendChild(line);
+      simTerminal.scrollTop = simTerminal.scrollHeight;
+    }
+  </script>
+</body>
+</html>
